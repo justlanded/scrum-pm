@@ -89,7 +89,7 @@ class SprintsController < ApplicationController
   def update
 
     render :update do |p|
-      if @sprint.update_attributes(params[:sprint])
+      if @sprint.update_attributes(params[:sprint].except('status'))
         data = load_sprint_stats(@sprint, [])
         p.replace_html "sprint_name_#{@sprint.id}", "#{@sprint.name}"
         p.replace_html "sprint_percent_done_#{@sprint.id}", :partial => "shared/percent_done", :locals => {:data => data}

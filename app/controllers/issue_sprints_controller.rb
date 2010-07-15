@@ -3,16 +3,18 @@ class IssueSprintsController < ApplicationController
   before_filter :find_project, :authorize
 
   helper SprintsHelper
-  helper CustomFieldsHelper  
+  helper CustomFieldsHelper
 
-  
+  MODIFY_STATUSES = false
+
+
   # Add a new issue
   # The new issue will be created from an existing one if copy_from parameter is given
   def new
     @issue = Issue.new
     @issue.copy_from(params[:copy_from]) if params[:copy_from]
     @issue.project = @project
-    @issue.user_story_id = params[:user_story_id] unless params[:user_story_id].blank? 
+    @issue.user_story_id = params[:user_story_id] unless params[:user_story_id].blank?
     # Tracker must be set before custom field values
     @issue.tracker ||= @project.trackers.find((params[:issue] && params[:issue][:tracker_id]) || params[:tracker_id] || :first)
     if @issue.tracker.nil?
@@ -40,10 +42,14 @@ class IssueSprintsController < ApplicationController
     else
       requested_status = IssueStatus.find_by_id(params[:issue][:status_id])
       # Check that the user is allowed to apply the requested status
-      @issue.status = (@allowed_statuses.include? requested_status) ? requested_status : default_status
+      @issue.status = (@allowed_statuses.include? requested_status) ? requested_status : default_status if modify_statuses?
       @issue.fixed_version_id = @issue.user_story.version_id
       if @issue.save
-        status = done_ratio_to_status(@issue)
+        if modify_statuses?
+          status = done_ratio_to_status(task)
+        else
+          status = task.status
+        end
         attach_files(@issue, params[:attachments])
         call_hook(:controller_issues_new_after_save, { :params => params, :issue => @issue})
         @issue_statuses = IssueStatus.find(:all)
@@ -63,11 +69,15 @@ class IssueSprintsController < ApplicationController
     value = nil
     value = obj.find(params[:value]) unless params[:value].blank?
     task = Issue.find(params[:task_id])
-    eval "task.#{params[:field]}=#{value ? value.id : "nil"}"
+    eval "task.#{params[:field]}=#{value ? value.id : "nil"}" unless params[:filed].to_s == 'status'
     if task.save
       @issue_statuses = IssueStatus.find(:all)
       @project_users = User.find(:all, :joins => :members, :conditions => ["members.project_id = ?", @project.id])
-      status = done_ratio_to_status(task)
+      if modify_statuses?
+        status = done_ratio_to_status(task)
+      else
+        status = task.status
+      end
 
       render :update do |page|
         page.replace "task_wrap_#{task.id}", ""
@@ -75,7 +85,7 @@ class IssueSprintsController < ApplicationController
                           :locals => {:task => task, :issue_statuses => @issue_statuses,
                           :project_users => @project_users}
       end
-    else           
+    else
       render :update do |page|
         page.insert_html :top, "content", content_tag('div', t(:error_changing_status), :class => "error", :id => "errorExplanation")
       end
@@ -92,11 +102,11 @@ class IssueSprintsController < ApplicationController
         if done_ratio_to_status(issue) != params[:status_id]
           issue.done_ratio = status_to_done_ratio(params[:status_id])
         end
-        issue.status = issue_status(issue)
+        issue.status = issue_status(issue) if modify_statuses?
         issue.user_story_id = params[:user_story_id]
       end
 
-      if issue.save                                     
+      if issue.save
         @issue_statuses = IssueStatus.find(:all)
         @project_users = User.find(:all, :joins => :members, :conditions => ["members.project_id = ?", @project.id])
         render :update do |p|
@@ -114,6 +124,10 @@ class IssueSprintsController < ApplicationController
   end
 
   private
+
+  def modify_statuses?
+    MODIFY_STATUSES
+  end
 
   def find_project
     @project = Project.find(params[:project_id])

@@ -70,7 +70,7 @@ class TasksController < ApplicationController
     task = Task.find(params[:id])
     unless task.nil?
 #      if (task.status_id.to_s != params[:status_id].to_s || (!params[:user_story_id].nil? && params[:user_story_id].to_s != task.user_story_id.to_s ))
-        task.status_id = params[:status_id]
+        task.status_id = params[:status_id] if modify_statuses?
         task.author = User.current
         if !params[:user_story_id].nil? and params[:user_story_id].to_s != task.user_story_id.to_s and !UserStory.find(params[:user_story_id]).nil?
           task.user_story_id = params[:user_story_id]
@@ -140,5 +140,9 @@ class TasksController < ApplicationController
     @project = Project.find(params[:project_id])
     rescue ActiveRecord::RecordNotFound
       render_404
+  end
+
+  def modify_statuses?
+    false
   end
 end
