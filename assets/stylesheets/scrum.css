@@ -241,6 +241,14 @@ div.calendar{
     text-align: center;
 }
 
+td.tab_us_main {
+	width: 234px;
+}
+
+td.tab_us_main table {
+	background-color: #99ccff;
+}
+
 .sprint_stats_done{
     border: 2px ridge;
     border-color: green;
