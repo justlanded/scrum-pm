@@ -10,6 +10,11 @@
    TODO customize this sample style
    Syntax recommendation http://www.w3.org/TR/REC-CSS2/
 */
+
+#sidebar {
+	overflow: hidden;
+}	
+
 div.calendar{
 	z-index:10001 !important;
 }
@@ -48,7 +53,7 @@ div.calendar{
     border: 1px solid #48487b;
     margin: 10px 0;
     padding: 0;
-}
+
 
 .sprints_fieldset td{
     padding: 2px;
